@@ -1,62 +1,44 @@
-import type { NextPage } from "next";
+import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
-import React, { useEffect, useState } from "react";
-import Link from "next/link";
+import { ProductType } from "../../types";
+import ProductItem from "../../components/ProductItem";
+import { useRouter } from "next/router";
+import { ChangeEvent, useState } from "react";
 
-type Product = {
-  id: string;
-  name: string;
-  gender: string;
-  category: string;
-  price: string;
-  img: string;
-};
+interface Props {
+  dataProducts: ProductType[];
+  noResults: boolean;
+}
 
-const Shop: NextPage = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [genderFilter, setGenderFilter] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [loading, setLoading] = useState(false);
+const itemsPerPage = 8;
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    let url = "http://localhost:5001/products";
-    const queryParams: string[] = [];
+const Shop: NextPage<Props> = ({ dataProducts, noResults }) => {
+  const [activeFilter, setActiveFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
-    if (genderFilter) {
-      queryParams.push(`gender=${genderFilter}`);
-    }
+  const router = useRouter();
 
-    if (searchQuery) {
-      queryParams.push(`q=${searchQuery}`);
-    }
-
-    if (queryParams.length > 0) {
-      url += `?${queryParams.join("&")}`;
-    }
-
-    try {
-      const response = await fetch(url);
-      if (response.ok) {
-        const data = await response.json();
-        setProducts(data);
-      } else {
-        console.error("Failed to fetch products");
-      }
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    } finally {
-      setLoading(false);
-    }
+  const handleFilterClick = (filterValue: string) => {
+    router.push(`/shop?q=${filterValue}`);
+    setActiveFilter(filterValue);
+    setCurrentPage(1);
   };
 
-  useEffect(() => {
-    fetchProducts();
-  }, [genderFilter, searchQuery]);
+  const handleSearch = () => {
+    router.push(`/shop?q=${searchTerm}`);
+  };
 
-  const clearFilters = () => {
-    setGenderFilter(null);
-    setSearchQuery("");
+  const totalPages = Math.ceil(dataProducts.length / itemsPerPage);
+
+  const displayProducts = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return dataProducts.slice(startIndex, endIndex);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   return (
@@ -72,34 +54,66 @@ const Shop: NextPage = () => {
           <div className="flex-w flex-sb-m p-b-52">
             <div className="flex-w flex-l-m filter-tope-group m-tb-10">
               <button
-                className={`stext-106 cl6 hov1 bor3 trans-04 m-r-32 m-tb-5 ${!genderFilter && !searchQuery ? "how-active1" : ""}`}
-                onClick={clearFilters}
+                className={`stext-106 cl6 hov1 bor3 trans-04 m-r-32 m-tb-5 ${
+                  activeFilter === "" ? "how-active1" : ""
+                }`}
+                data-filter="*"
+                onClick={() => handleFilterClick("")}
               >
                 All Products
               </button>
 
               <button
-  className={`stext-106 cl6 hov1 bor3 trans-04 m-r-32 m-tb-5 ${genderFilter === "women" ? "how-active1" : ""}`}
-  onClick={() => {
-    setGenderFilter("women");
-    console.log("Filter Women clicked");
-    console.log(genderFilter);
-  }}
->
-  Women
-</button>
-
-
+                className={`stext-106 cl6 hov1 bor3 trans-04 m-r-32 m-tb-5 ${
+                  activeFilter === "women" || router.query.gender === "women"
+                    ? "how-active1"
+                    : ""
+                }`}
+                data-filter=".women"
+                onClick={() => handleFilterClick("women")}
+              >
+                Women
+              </button>
 
               <button
-                className={`stext-106 cl6 hov1 bor3 trans-04 m-r-32 m-tb-5 ${genderFilter === "man" ? "how-active1" : ""}`}
-                onClick={() => setGenderFilter("man")}
+                className={`stext-106 cl6 hov1 bor3 trans-04 m-r-32 m-tb-5 ${
+                  activeFilter === "man" ? "how-active1" : ""
+                }`}
+                data-filter=".men"
+                onClick={() => handleFilterClick("man")}
               >
                 Men
               </button>
 
-             
-              
+              <button
+                className={`stext-106 cl6 hov1 bor3 trans-04 m-r-32 m-tb-5 ${
+                  activeFilter === "belt" ? "how-active1" : ""
+                }`}
+                data-filter=".bag"
+                onClick={() => handleFilterClick("belt")}
+              >
+                Belt
+              </button>
+
+              <button
+                className={`stext-106 cl6 hov1 bor3 trans-04 m-r-32 m-tb-5 ${
+                  activeFilter === "shoes" ? "how-active1" : ""
+                }`}
+                data-filter=".shoes"
+                onClick={() => handleFilterClick("shoes")}
+              >
+                Shoes
+              </button>
+
+              <button
+                className={`stext-106 cl6 hov1 bor3 trans-04 m-r-32 m-tb-5 ${
+                  activeFilter === "watch" ? "how-active1" : ""
+                }`}
+                data-filter=".watches"
+                onClick={() => handleFilterClick("watch")}
+              >
+                Watches
+              </button>
             </div>
 
             <div className="flex-w flex-c-m m-tb-10">
@@ -109,10 +123,13 @@ const Shop: NextPage = () => {
               </div>
             </div>
 
-           
+            {/* search */}
             <div className="panel-search w-full p-t-10 p-b-15">
               <div className="bor8 dis-flex p-l-15">
-                <button className="size-113 flex-c-m fs-16 cl2 hov-cl1 trans-04">
+                <button
+                  className="size-113 flex-c-m fs-16 cl2 hov-cl1 trans-04"
+                  onClick={() => handleSearch()}
+                >
                   <i className="zmdi zmdi-search"></i>
                 </button>
 
@@ -121,62 +138,40 @@ const Shop: NextPage = () => {
                   type="text"
                   name="search-product"
                   placeholder="Search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    setSearchTerm(e.target.value)
+                  }
+                  onKeyUp={() => {
+                    handleSearch();
+                  }}
                 />
               </div>
             </div>
           </div>
 
-          <div className="row isotope-grid">
-            {products.length === 0 && <p>There are no results with your search.</p>}
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className={`col-sm-6 col-md-4 col-lg-3 p-b-35 isotope-item ${product.gender.toLowerCase()}`}
-              >
-                <div className="block2">
-                  <div className="block2-pic hov-img0">
-                    <img src={product.img} alt={`IMG-${product.name}`} />
-
-                    <Link href={`/shop/${product.id}`}>
-  <a className="block2-btn flex-c-m stext-103 cl2 size-102 bg0 bor2 hov-btn1 p-lr-15 trans-04 js-show-modal1">
-    <span>View Details</span>
-  </a>
-</Link>
-
-
-                  </div>
-
-                  <div className="block2-txt flex-w flex-t p-t-14">
-                    <div className="block2-txt-child1 flex-col-l ">
-                      <a
-                        href="product-detail.html"
-                        className="stext-104 cl4 hov-cl1 trans-04 js-name-b2 p-b-6"
-                      >
-                        {product.name}
-                      </a>
-
-                      <span className="stext-105 cl3">{product.price}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          {noResults ? (
+            <h2>No results found.</h2>
+          ) : (
+            <div className="row isotope-grid">
+              {displayProducts().map((product) => (
+                <ProductItem key={product.id} product={product} />
+              ))}
+            </div>
+          )}
 
           <div className="flex-l-m flex-w w-full p-t-10 m-lr--7">
-            <a href="#" className="flex-c-m how-pagination1 trans-04 m-all-7 active-pagination1">
-              1
-            </a>
-
-            <a href="#" className="flex-c-m how-pagination1 trans-04 m-all-7">
-              2
-            </a>
-
-            <a href="#" className="flex-c-m how-pagination1 trans-04 m-all-7">
-              3
-            </a>
+            {Array.from({ length: totalPages }, (_, index) => (
+              <a
+                key={index}
+                href="#"
+                className={`flex-c-m how-pagination1 trans-04 m-all-7 ${
+                  currentPage === index + 1 ? "active-pagination1" : ""
+                }`}
+                onClick={() => handlePageChange(index + 1)}
+              >
+                {index + 1}
+              </a>
+            ))}
           </div>
         </div>
       </div>
@@ -185,3 +180,53 @@ const Shop: NextPage = () => {
 };
 
 export default Shop;
+
+export const getServerSideProps: GetServerSideProps = async ({ query }) => {
+  try {
+    const queryParamProducts = query.q || "";
+    const queryParamGender = query.gender || "";
+    const queryParamSearch = query.search || "";
+
+    const apiEndpoint = "http://localhost:5001/products?";
+    const queryParams = [];
+
+    if (queryParamProducts) {
+      queryParams.push(`q=${queryParamProducts}`);
+    }
+
+    if (queryParamGender) {
+      queryParams.push(`gender_like=${queryParamGender}`);
+    }
+
+    if (queryParamSearch) {
+      queryParams.push(`search=${queryParamSearch}`);
+    }
+
+    const fullEndpoint = apiEndpoint + queryParams.join("&");
+
+    const response = await fetch(fullEndpoint);
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch data from the API");
+    }
+
+    const dataProducts: ProductType = await response.json();
+
+    const noResults = dataProducts.length === 0;
+
+    return {
+      props: {
+        dataProducts,
+        noResults,
+      },
+    };
+  } catch (error) {
+    console.error("An error occurred:", error);
+    return {
+      props: {
+        dataProducts: [],
+        noResults: true,
+      },
+    };
+  }
+};

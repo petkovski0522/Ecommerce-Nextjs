@@ -1,44 +1,30 @@
-// RelatedProducts.tsx
-import React, { useState, useEffect } from "react";
+import React from "react";
 import ProductItem from "./ProductItem";
+import { ProductType } from "../types";
 
-interface ProductData {
-  id: string;
-  title: string;
-  price: string;
-  image: string;
-  description: string;
+interface RelatedProductsProps {
+  relatedProducts: ProductType[];
 }
 
-const RelatedProducts: React.FC = () => {
-  const [relatedProducts, setRelatedProducts] = useState<ProductData[]>([]);
-
-  useEffect(() => {
-   
-    const randomNo = Math.floor(Math.random() * 100);
-    fetch(`http://localhost:5001/products?_start=${randomNo}&_limit=4`)
-      .then((response) => response.json())
-      .then((data) => setRelatedProducts(data))
-      .catch((error) => console.error("Error fetching related products:", error));
-  }, []);
-
+const RelatedProducts: React.FC<RelatedProductsProps> = ({
+  relatedProducts,
+}) => {
   return (
-    <div>
-      <h3 className="ltext-106 cl5 txt-center">Related Products</h3>
-      <div className="wrap-slick2">
-        <div className="d-flex">
-          {relatedProducts.map((product) => (
-            <ProductItem
-              key={product.id}
-              title={product.title}
-              price={product.price}
-              image={product.image}
-              description={product.description}
-            />
-          ))}
+    <section className="sec-relate-product bg0 p-t-45 p-b-105">
+      <div className="container">
+        <div className="p-b-45">
+          <h3 className="ltext-106 cl5 txt-center">Related Products</h3>
+        </div>
+
+        <div className="wrap-slick2">
+          <div className="d-flex">
+            {relatedProducts.map((product) => (
+              <ProductItem key={product.id} product={product} />
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 

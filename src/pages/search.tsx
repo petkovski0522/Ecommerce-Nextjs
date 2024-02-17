@@ -1,10 +1,37 @@
-import type { NextPage } from "next";
+import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
-import PageTitle from "../components/PageTitle";
 import BlogItem from "../components/BlogItem";
+import PageTitle from "../components/PageTitle";
 import ProductItem from "../components/ProductItem";
+import React from "react";
+import { BlogType, ProductType } from "../types";
+import { useRouter } from "next/router";
+import { type } from "os";
 
-const Search: NextPage = ({ blogs, products, query }: any) => {
+interface Props {
+  dataBlogs: BlogType[];
+  dataProducts: ProductType[];
+}
+
+const Search: NextPage<Props> = ({ dataBlogs, dataProducts }) => {
+  const router = useRouter();
+  const { query } = router.query;
+  const searchQuery = Array.isArray(query) ? query[0] : query || "";
+
+  const filteredBlogs = dataBlogs.filter(
+    (blog) =>
+      blog.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      blog.category.toLowerCase().includes(searchQuery.toLocaleLowerCase())
+  );
+
+  const filteredProducts = dataProducts.filter(
+    (product) =>
+      product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.description
+        .toLowerCase()
+        .includes(searchQuery.toLocaleLowerCase())
+  );
+
   return (
     <>
       <Head>
@@ -13,34 +40,38 @@ const Search: NextPage = ({ blogs, products, query }: any) => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <PageTitle title={`Search Results for: ${query}`} />
+      <PageTitle title="Search Page" />
 
       <div className="bg0 m-t-23 p-b-140 mt-5">
         <div className="container">
-          
-          <h2>Blogs</h2>
-          <div className="row isotope-grid">
-            {blogs.map((blog: any) => (
-              <div key={blog.id} className="col-4">
-                <BlogItem blog={blog} />
+          {/* blogs  */}
+          <>
+            <h2 className="mb-5">Blogs</h2>
+            <div className="row isotope-grid">
+              {/* blog skeleton - search result */}
+              <div className="col-12">
+                <div className="row">
+                  {filteredBlogs.map((blog) => (
+                    <BlogItem key={blog.id} blog={blog} />
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
+              {/* !! */}
+            </div>
+          </>
 
-          
-          <h2>Products</h2>
-          <div className="row isotope-grid">
-            {products.map((product: any) => (
-              <div key={product.id} className="col-4">
-                <ProductItem
-                  title={product.title}
-                  price={product.price}
-                  image={product.image}
-                  description={product.description}
-                />
-              </div>
-            ))}
-          </div>
+          {/* products */}
+          <>
+            <h2 className="mb-5">Products</h2>
+            <div className="row isotope-grid">
+              {/* product skeleton */}
+              {filteredProducts.map((product) => (
+                <ProductItem key={product.id} product={product} />
+              ))}
+
+              {/* !! */}
+            </div>
+          </>
         </div>
       </div>
     </>
@@ -49,35 +80,23 @@ const Search: NextPage = ({ blogs, products, query }: any) => {
 
 export default Search;
 
-export async function getServerSideProps(context: any) {
-  const { query } = context.query; 
+export const getServerSideProps: GetServerSideProps = async () => {
+  const resBlog = await fetch(`http://localhost:5001/blogs`);
+  const dataBlog: BlogType[] = await resBlog.json();
 
-  
-  const [blogResponse, productResponse] = await Promise.all([
-    fetch(`http://localhost:5001/blogs?q=${query}`),
-    fetch(`http://localhost:5001/products?q=${query}`),
-  ]);
-
-  if (!blogResponse.ok || !productResponse.ok) {
+  if (!dataBlog) {
     return {
-      props: {
-        blogs: [],
-        products: [],
-        query,
-      },
+      notFound: true,
     };
   }
 
-  const [blogs, products] = await Promise.all([
-    blogResponse.json(),
-    productResponse.json(),
-  ]);
+  const resProduct = await fetch(`http://localhost:5001/products`);
+  const dataProduct: ProductType[] = await resProduct.json();
 
   return {
     props: {
-      blogs,
-      products,
-      query,
+      dataBlogs: dataBlog,
+      dataProducts: dataProduct,
     },
   };
-}
+};
