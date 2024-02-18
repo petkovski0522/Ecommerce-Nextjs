@@ -1,43 +1,49 @@
-import type { NextPage } from "next";
+import { ChangeEvent, FormEvent, useState } from "react";
+import { NextPage, GetServerSideProps } from "next";
 import Head from "next/head";
-import React, { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import BlogItem from "../../components/BlogItem";
 import PageTitle from "../../components/PageTitle";
+import { BlogType } from "../../types";
 
-const Blog: NextPage = () => {
-  const [blogs, setBlogs] = useState([]); 
-  const [searchQuery, setSearchQuery] = useState(""); 
-  const [categoryFilter, setCategoryFilter] = useState(""); 
+interface BlogProps {
+  blogs: BlogType[];
+  noResults: boolean;
+}
 
-  useEffect(() => {
-   
-    const fetchBlogs = async () => {
-      let apiUrl = "http://localhost:5001/blogs";
+const Blog: NextPage<BlogProps> = ({ blogs, noResults }) => {
+  const [activeFilter, setActiveFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
-      
-      if (categoryFilter) {
-        apiUrl += `?category_like=${categoryFilter}`;
-      }
-      if (searchQuery) {
-        apiUrl += `${categoryFilter ? "&" : "?"}q=${searchQuery}`;
-      }
+  const router = useRouter();
 
-      try {
-        const response = await fetch(apiUrl);
-        if (response.ok) {
-          const data = await response.json();
-          setBlogs(data);
-        } else {
-          console.error("Failed to fetch blogs");
-        }
-      } catch (error) {
-        console.error("Error fetching blogs:", error);
-      }
-    };
+  const handleFilterClick = (filterValue: string) => {
+    router.push(`/blog?q=${filterValue}`);
+    setActiveFilter(filterValue);
+    setSearchTerm("");
+  };
 
-    
-    fetchBlogs();
-  }, [categoryFilter, searchQuery]);
+  const handleSearch = () => {
+    router.push(`/blog?q=${searchTerm}`);
+  };
+
+  const filteredBlogs = blogs.filter((blog) => {
+    if (activeFilter && blog.category.toLowerCase() !== activeFilter) {
+      return false;
+    }
+
+    if (
+      searchTerm &&
+      !(
+        blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        blog.category.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    ) {
+      return false;
+    }
+
+    return true;
+  });
 
   return (
     <>
@@ -47,36 +53,52 @@ const Blog: NextPage = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <PageTitle title="Blog" />
+      <PageTitle title="Blogs" />
 
       <section className="bg0 p-t-62 p-b-60">
         <div className="container">
           <div className="row">
             <div className="col-md-8 col-lg-9 p-b-80">
               <div className="p-r-45 p-r-0-lg">
-                {blogs.length > 0 ? (
-                  blogs.map((blog) => (
-                    <BlogItem key={blog.id} blog={blog} />
-                  ))
+                {noResults ? (
+                  <p>No matching items found.</p>
                 ) : (
-                  <p>There are no results with your search.</p>
+                  <div className="row">
+                    {filteredBlogs.map((blog: BlogType) => (
+                      <BlogItem key={blog.id} blog={blog} />
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
 
             <div className="col-md-4 col-lg-3 p-b-80">
               <div className="side-menu">
-                <form className="bor17 of-hidden pos-relative">
+                <form
+                  className="bor17 of-hidden pos-relative"
+                  onSubmit={(e: FormEvent<HTMLFormElement>) => {
+                    e.preventDefault();
+                    handleSearch();
+                  }}
+                >
                   <input
                     className="stext-103 cl2 plh4 size-116 p-l-28 p-r-55"
                     type="text"
                     name="search"
                     placeholder="Search"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    value={searchTerm}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      setSearchTerm(e.target.value)
+                    }
+                    onKeyUp={() => {
+                      handleSearch();
+                    }}
                   />
 
-                  <button className="flex-c-m size-122 ab-t-r fs-18 cl4 hov-cl1 trans-04">
+                  <button
+                    className="flex-c-m size-122 ab-t-r fs-18 cl4 hov-cl1 trans-04"
+                    onClick={() => handleSearch()}
+                  >
                     <i className="zmdi zmdi-search"></i>
                   </button>
                 </form>
@@ -87,46 +109,58 @@ const Blog: NextPage = () => {
                   <ul>
                     <li className="bor18">
                       <button
-                        className="dis-block stext-115 cl6 hov-cl1 trans-04 p-tb-8 p-lr-4"
-                        onClick={() => setCategoryFilter("Fashion")}
+                        className={`dis-block stext-115 cl6 hov-cl1 trans-04 p-tb-8 p-lr-4 ${
+                          activeFilter === "fashion" ? "how-active1" : ""
+                        }`}
+                        onClick={() => handleFilterClick("fashion")}
                       >
                         Fashion
                       </button>
                     </li>
+
                     <li className="bor18">
                       <button
-                        className="dis-block stext-115 cl6 hov-cl1 trans-04 p-tb-8 p-lr-4"
-                        onClick={() => setCategoryFilter("Beauty")}
+                        className={`dis-block stext-115 cl6 hov-cl1 trans-04 p-tb-8 p-lr-4 ${
+                          activeFilter === "beauty" ? "how-active1" : ""
+                        }`}
+                        onClick={() => handleFilterClick("beauty")}
                       >
                         Beauty
                       </button>
                     </li>
+
                     <li className="bor18">
                       <button
-                        className="dis-block stext-115 cl6 hov-cl1 trans-04 p-tb-8 p-lr-4"
-                        onClick={() => setCategoryFilter("streetstyle")}
+                        className={`dis-block stext-115 cl6 hov-cl1 trans-04 p-tb-8 p-lr-4 ${
+                          activeFilter === "streetstyle" ? "how-active1" : ""
+                        }`}
+                        onClick={() => handleFilterClick("streetstyle")}
                       >
                         Street Style
                       </button>
                     </li>
+
                     <li className="bor18">
                       <button
-                        className="dis-block stext-115 cl6 hov-cl1 trans-04 p-tb-8 p-lr-4"
-                        onClick={() => setCategoryFilter("lifestyle")}
+                        className={`dis-block stext-115 cl6 hov-cl1 trans-04 p-tb-8 p-lr-4 ${
+                          activeFilter === "lifestyle" ? "how-active1" : ""
+                        }`}
+                        onClick={() => handleFilterClick("lifestyle")}
                       >
                         Life Style
                       </button>
                     </li>
+
                     <li className="bor18">
                       <button
-                        className="dis-block stext-115 cl6 hov-cl1 trans-04 p-tb-8 p-lr-4"
-                        onClick={() => setCategoryFilter("diy")}
+                        className={`dis-block stext-115 cl6 hov-cl1 trans-04 p-tb-8 p-lr-4 ${
+                          activeFilter === "diy" ? "how-active1" : ""
+                        }`}
+                        onClick={() => handleFilterClick("diy")}
                       >
-                        DIY & Crafts
+                        Diy & Crafts
                       </button>
                     </li>
-
-                    
                   </ul>
                 </div>
               </div>
@@ -139,3 +173,52 @@ const Blog: NextPage = () => {
 };
 
 export default Blog;
+
+export const getServerSideProps: GetServerSideProps = async ({ query }) => {
+  try {
+    const queryParamProducts = query.q || "";
+    const queryParamGender = query.gender || "";
+    const queryParamSearch = query.search || "";
+
+    const apiEndpoint = "http://localhost:5001/blogs?";
+    const queryParams = [];
+
+    if (queryParamProducts) {
+      queryParams.push(`q=${queryParamProducts}`);
+    }
+
+    if (queryParamGender) {
+      queryParams.push(`category_like=${queryParamGender}`);
+    }
+
+    if (queryParamSearch) {
+      queryParams.push(`search=${queryParamSearch}`);
+    }
+
+    const fullEndpoint = apiEndpoint + queryParams.join("&");
+
+    const response = await fetch(fullEndpoint);
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch data from the API");
+    }
+
+    const blogs: BlogType[] = await response.json();
+    const noResults = blogs.length === 0;
+
+    return {
+      props: {
+        blogs,
+        noResults,
+      },
+    };
+  } catch (error) {
+    console.error("An error occurred:", error);
+    return {
+      props: {
+        dataProducts: [],
+        noResults: true,
+      },
+    };
+  }
+};
